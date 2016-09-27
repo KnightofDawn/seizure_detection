@@ -5,7 +5,7 @@ class EEGGenerator:
     names_key = 'names'
     classes_key = 'classes'
     
-    def __init__(self, file_name, batch_size = 64):
+    def __init__(self, file_name, batch_size = 32):
         self.hdf = h5.File(file_name, 'r')
         self.batch_size = batch_size
         self.n_samples = self.hdf[self.names_key].shape[0]
