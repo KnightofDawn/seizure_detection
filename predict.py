@@ -5,6 +5,7 @@ from eeg_generator import EEGGenerator
 def main():
     model_file = 'data/models/allcnn1/cnn.h5'
     weights_file = 'data/models/allcnn1/epoch_1_weights.h5'
+    test_file = 'data/test.h5'
     prediction_file = 'data/models/allcnn1/prediction.csv'
     
     model = load_model(model_file)
@@ -12,8 +13,7 @@ def main():
     
     prediction_frame = DataFrame(columns = ['File', 'Prediction'])
     
-    
-    with EEGGenerator(prediction_file) as gen:
+    with EEGGenerator(test_file) as gen:
         i = 0
         for names, test_x in gen.gen_test():
             print('%d/%d' % (i * gen.batch_size, gen.n_samples))
