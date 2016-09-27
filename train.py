@@ -1,10 +1,11 @@
 from os import mkdir
 from os.path import isfile, isdir
 
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Activation
 from keras.layers.convolutional import Convolution1D
 from keras.layers.core import Dense, Dropout, Activation, Flatten
+
 
 from keras.callbacks import ModelCheckpoint
 
@@ -35,7 +36,7 @@ def build_cnn(out_file):
     print(model.output_shape)
     model.add(Flatten())
     print(model.output_shape)
-    model.add(Dense(32))
+    model.add(Dense(128))
     model.add(Activation('relu'))
     model.add(Dropout(0.5))
     print(model.output_shape)
@@ -61,15 +62,19 @@ def main():
         mkdir(model_dir)
     if not isfile(model_file):
         build_cnn(model_file)
-        
+    
     model = load_model(model_file)
-    samples_per_epoch = 400
-    n_epochs = 200
+    
+    if isfile(best_weights_file):
+        model.load_weights(best_weights_file)
+    
+    n_epochs = 10
     
     with EEGGenerator('data/train.h5') as gen:
-        epoch_cp = ModelCheckpoint(epoch_weights_file, monitor = 'val_loss', save_weights_only = True)
-        model.fit_generator(gen.flow_train(), samples_per_epoch, n_epochs, class_weight = gen.class_weights, callbacks = [epoch_cp])
-        
+        epoch_cp = ModelCheckpoint(epoch_weights_file, monitor = 'loss', save_weights_only = True)
+        best_cp = ModelCheckpoint(best_weights_file, monitor = 'loss', save_weights_only = True, save_best_only = True)
+        model.fit_generator(gen.gen_train(), gen.n_samples, n_epochs, class_weight = gen.class_weights, callbacks = [epoch_cp, best_cp])
+    
 if __name__ == '__main__':
     main()       
                 
