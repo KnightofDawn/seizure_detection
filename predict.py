@@ -14,10 +14,7 @@ def main():
     prediction_frame = DataFrame(columns = ['File', 'Prediction'])
     
     with EEGGenerator(test_file) as gen:
-        i = 0
         for names, test_x in gen.gen_test():
-            print('%d/%d' % (i * gen.batch_size, gen.n_samples))
-            i += 1
             prediction = model.predict_proba(test_x, batch_size = gen.batch_size)
             rows = [{'File': names[j], 'Class': prediction[j]} for j in range(len(names))]
             prediction_frame = prediction_frame.append(rows, ignore_index = True)
