@@ -1,33 +1,43 @@
+import os
+
 from keras.models import load_model
 from pandas import DataFrame
-from eeg_generator import EEGGenerator
+import numpy as np
+
+from sdetect.io import EEGReader
+from sdetect.models import AllCNN
 
 def main():
-    model_file = 'data/models/allcnn1/cnn.h5'
-    weights_file = 'data/models/allcnn1/best_weights.h5'
     test_file = 'data/test.h5'
-    prediction_file = 'data/models/allcnn1/prediction.csv'
-    prediction_proba_file = 'data/models/allcnn1/prediction_proba.csv'
-    
+    prediction_file = 'data/models/allcnn4/prediction.csv'
+    model_file = 'data/models/allcnn4/cnn.h5'
     model = load_model(model_file)
-    weights = model.load_weights(weights_file)
     
-    prediction_frame = DataFrame(columns = ['File', 'Class'])
-    prediction_proba_frame = DataFrame(columns = ['File', 'Class'])
+    allcnn = AllCNN()
     
-    with EEGGenerator(test_file) as gen:
-        for names, test_x in gen.gen_test():
-            prediction = model.predict_classes(test_x, batch_size = gen.batch_size, verbose = 0)
-            prediction_proba = model.predict_proba(test_x, batch_size = gen.batch_size, verbose = 0)
+    with EEGReader(test_file) as eeg_reader:
+        idx = 0
+        name_arr = np.array([''] * eeg_reader.n_samples, dtype = object)
+        prediction_arr = np.zeros(eeg_reader.n_samples)
+        for i, patient in enumerate(eeg_reader.gen_patient()):
+            weights_file = 'data/models/allcnn4/weights%d/best_weights.h5' % int(patient['id'])
+            model.load_weights(weights_file)
             
-            rows = [{'File': names[j], 'Class': prediction[j][0]} for j in range(len(names))]
-            rows_proba = [{'File': names[j], 'Class': prediction_proba[j][0]} for j in range(len(names))]
-            
-            prediction_frame = prediction_frame.append(rows, ignore_index = True)
-            prediction_proba_frame = prediction_proba_frame.append(rows_proba, ignore_index = True)
-           
+            for names, test_x in patient['generators']['test'].gen():
+                print('%d/%d' % (idx, eeg_reader.n_samples))
+                batch_samples = len(names)
+                prediction = model.predict_proba(test_x, batch_size = batch_samples, verbose = 0)
+                prediction_arr[idx:idx + batch_samples] = prediction.flatten()
+                name_arr[idx:idx + batch_samples] = names
+                
+                idx = idx + batch_samples
+                
+                for name in names:
+                    patient_id = int(os.path.basename(name).split('.')[-2].split('_')[0])
+                    if(not patient_id == int(patient['id'])):
+                        print(patient['id'], name)
+        prediction_frame = DataFrame(data = {'File': name_arr, 'Class': prediction_arr})
         prediction_frame.to_csv(prediction_file, index = False, cols = ['File', 'Class'], engine = 'python')
-        prediction_proba_frame.to_csv(prediction_proba_file, index = False, cols = ['File', 'Class'], engine = 'python')
-    
+            
 if __name__ == '__main__':
     main()

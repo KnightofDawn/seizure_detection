@@ -1,0 +1,1 @@
+from allcnn import AllCNN
